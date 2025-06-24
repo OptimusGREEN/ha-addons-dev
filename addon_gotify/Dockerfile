@@ -1,7 +1,7 @@
 FROM alpine:3.19
 
 # Install required packages
-RUN apk add --no-cache bash jq ca-certificates curl
+RUN apk add --no-cache bash jq ca-certificates curl su-exec
 
 # Create gotify user
 RUN adduser -D -H -u 1000 gotify
@@ -22,8 +22,8 @@ RUN ARCH=$(uname -m) && \
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
-# Switch to gotify user
-USER gotify
+# Keep as root user for now (we'll drop privileges in the script)
+# USER gotify
 
 # Expose port
 EXPOSE 80

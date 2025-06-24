@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
 set -e
 
-# Read Home Assistant addon options
+# Read Home Assistant addon options (as root)
 OPTIONS_FILE="/data/options.json"
 CONFIG_PATH="/data/config.yml"
+
+echo "[INFO] Reading addon options..."
+
+# Check if options file exists and is readable
+if [[ ! -f "$OPTIONS_FILE" ]]; then
+    echo "[ERROR] Options file not found: $OPTIONS_FILE"
+    exit 1
+fi
 
 # Extract options using jq (Home Assistant provides this)
 PORT=$(jq -r '.port // 80' "$OPTIONS_FILE")
@@ -22,7 +30,7 @@ server:
 
 database:
   dialect: "sqlite3"
-  connection: "data/gotify.db"
+  connection: "/data/gotify.db"
 
 passstrength: 10
 
@@ -33,8 +41,12 @@ defaultuser:
 registration: ${ALLOW_REGISTRATION}
 EOF
 
-# Create data directory if it doesn't exist
-mkdir -p /data/data
+# Create data directory and set permissions
+mkdir -p /data
+chown -R gotify:gotify /data
+chmod -R 755 /data
 
-echo "[INFO] Starting Gotify..."
-exec /usr/local/bin/gotify --config "$CONFIG_PATH"
+echo "[INFO] Starting Gotify as gotify user..."
+
+# Switch to gotify user and start the application
+exec su-exec gotify /usr/local/bin/gotify --config "$CONFIG_PATH"
