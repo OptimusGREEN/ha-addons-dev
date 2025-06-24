@@ -1,19 +1,36 @@
-FROM gotify/server:2.4.0
+FROM alpine:3.19 as downloader
 
-# Switch to root to install dependencies
-USER root
+# Install curl to download binaries
+RUN apk add --no-cache curl
 
-# Install bash and jq for the run script
-RUN apk add --no-cache bash jq
+# Set architecture-specific variables
+ARG TARGETARCH
+RUN case "${TARGETARCH}" in \
+      amd64) GOTIFY_ARCH="amd64" ;; \
+      arm64) GOTIFY_ARCH="arm64" ;; \
+      arm) GOTIFY_ARCH="arm-7" ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
+    esac && \
+    curl -L "https://github.com/gotify/server/releases/download/v2.4.0/gotify-linux-${GOTIFY_ARCH}" -o /gotify && \
+    chmod +x /gotify
+
+# Final image
+FROM alpine:3.19
+
+# Install required packages
+RUN apk add --no-cache bash jq ca-certificates
+
+# Create gotify user
+RUN adduser -D -H -u 1000 gotify
+
+# Copy gotify binary from downloader stage
+COPY --from=downloader /gotify /usr/local/bin/gotify
 
 # Copy the run script
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
-# Create gotify user with same UID as addon expects
-RUN adduser -D -H -u 1000 gotify || true
-
-# Switch back to gotify user
+# Switch to gotify user
 USER gotify
 
 # Expose port
