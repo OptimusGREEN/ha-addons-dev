@@ -14,11 +14,18 @@ RUN go build -o gotify
 # --- Final stage image ---
 FROM alpine:3.19
 
+# Install bash for the run script
+RUN apk add --no-cache bash
+
 # Create non-root user
 RUN adduser -D -H -u 1000 gotify
 
-# Copy binary
+# Copy binary and script
 COPY --from=builder /app/gotify /usr/local/bin/gotify
+COPY run.sh /run.sh
+
+# Make script executable before switching user
+RUN chmod +x /run.sh
 
 # Use non-root user
 USER gotify
@@ -26,7 +33,5 @@ USER gotify
 # Expose port
 EXPOSE 80
 
-# Run Gotify with config (mounted by addon)
-COPY run.sh /run.sh
-RUN chmod +x /run.sh
+# Run the script
 CMD [ "/run.sh" ]

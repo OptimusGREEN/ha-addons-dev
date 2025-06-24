@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 set -e
 
+# Read Home Assistant addon options
+OPTIONS_FILE="/data/options.json"
 CONFIG_PATH="/data/config.yml"
+
+# Extract options using jq (Home Assistant provides this)
+PORT=$(jq -r '.port // 80' "$OPTIONS_FILE")
+USERNAME=$(jq -r '.username // "admin"' "$OPTIONS_FILE")
+PASSWORD=$(jq -r '.password // "admin"' "$OPTIONS_FILE")
+ALLOW_REGISTRATION=$(jq -r '.allow_registration // false' "$OPTIONS_FILE")
 
 echo "[INFO] Generating Gotify config at $CONFIG_PATH..."
 
@@ -16,11 +24,11 @@ database:
   dialect: "sqlite3"
   connection: "data/gotify.db"
 
-pass_strength: 60
+passstrength: 10
 
-default_user:
-  name: ${USERNAME}
-  pass: ${PASSWORD}
+defaultuser:
+  name: "${USERNAME}"
+  pass: "${PASSWORD}"
 
 registration: ${ALLOW_REGISTRATION}
 EOF
