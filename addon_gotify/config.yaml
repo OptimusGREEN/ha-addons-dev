@@ -1,5 +1,5 @@
 name: Gotify Server
-version: "0.1.0"
+version: "0.1.1"
 slug: addon_gotify
 description: Self-hosted push notification server with WebSocket support
 startup: services

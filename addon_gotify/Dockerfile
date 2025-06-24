@@ -16,11 +16,22 @@ RUN if command -v apk >/dev/null 2>&1; then \
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
-# Create gotify user if it doesn't exist (with consistent UID across architectures)
-RUN id gotify 2>/dev/null || adduser -D -H -u 1000 gotify
-
-# Create data directory with proper permissions
-RUN mkdir -p /data && chown gotify:gotify /data
+# Check if gotify user exists and create data directory
+RUN mkdir -p /data && \
+    if id gotify >/dev/null 2>&1; then \
+        echo "User gotify already exists"; \
+        chown gotify:gotify /data; \
+    else \
+        echo "Creating gotify user"; \
+        if command -v adduser >/dev/null 2>&1; then \
+            adduser -D -H -u 1000 gotify; \
+        elif command -v useradd >/dev/null 2>&1; then \
+            useradd -r -u 1000 -s /bin/false gotify; \
+        else \
+            echo "No user creation command found, will run as root"; \
+        fi && \
+        chown gotify:gotify /data 2>/dev/null || chown root:root /data; \
+    fi
 
 # Expose port
 EXPOSE 80

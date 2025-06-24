@@ -70,8 +70,16 @@ EOF
 # Create necessary directories
 echo "[INFO] Setting up data directories..."
 mkdir -p /data/images /data/plugins
-chown -R gotify:gotify /data
-chmod -R 755 /data
+
+# Set permissions based on available user
+if id gotify >/dev/null 2>&1; then
+    echo "[INFO] Setting permissions for gotify user..."
+    chown -R gotify:gotify /data 2>/dev/null || echo "[WARNING] Could not change ownership to gotify user"
+    chmod -R 755 /data
+else
+    echo "[WARNING] Gotify user not found, using root permissions"
+    chmod -R 755 /data
+fi
 
 # Find the gotify binary
 echo "[INFO] Locating Gotify binary..."
@@ -91,12 +99,19 @@ fi
 
 echo "[INFO] Starting Gotify server..."
 
-# Determine the correct user switching command based on available tools
-if command -v su-exec >/dev/null 2>&1; then
-    exec su-exec gotify "$GOTIFY_BIN" --config "$CONFIG_PATH"
-elif command -v gosu >/dev/null 2>&1; then
-    exec gosu gotify "$GOTIFY_BIN" --config "$CONFIG_PATH"
+# Determine the correct execution method based on available tools and user
+if id gotify >/dev/null 2>&1; then
+    if command -v su-exec >/dev/null 2>&1; then
+        echo "[INFO] Using su-exec to run as gotify user"
+        exec su-exec gotify "$GOTIFY_BIN" --config "$CONFIG_PATH"
+    elif command -v gosu >/dev/null 2>&1; then
+        echo "[INFO] Using gosu to run as gotify user"
+        exec gosu gotify "$GOTIFY_BIN" --config "$CONFIG_PATH"
+    else
+        echo "[INFO] Running as gotify user with su"
+        exec su gotify -s /bin/sh -c "$GOTIFY_BIN --config $CONFIG_PATH"
+    fi
 else
-    echo "[WARNING] Neither su-exec nor gosu found, running as root"
+    echo "[WARNING] Gotify user not found, running as current user"
     exec "$GOTIFY_BIN" --config "$CONFIG_PATH"
 fi
