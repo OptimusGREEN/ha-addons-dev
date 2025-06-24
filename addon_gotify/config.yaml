@@ -1,5 +1,5 @@
 name: Gotify Server
-version: "0.1.1"
+version: "0.1.2"
 slug: addon_gotify
 description: Self-hosted push notification server with WebSocket support
 startup: services
@@ -19,10 +19,16 @@ ports:
 ports_description:
   80/tcp: Gotify Web UI and API
 
+# Ensure data persistence by mapping the data directory
 map:
-  - config:rw
+  - data:rw
+  - config:ro
   - ssl:ro
   - share:rw
+
+# Add tmpfs for better performance on temp files
+tmpfs:
+  - /tmp:rw,noexec,nosuid,size=64m
 
 options:
   port: 80

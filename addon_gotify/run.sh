@@ -28,16 +28,36 @@ echo "  - Username: ${USERNAME}"
 echo "  - Registration allowed: ${ALLOW_REGISTRATION}"
 echo "  - Password strength: ${PASSSTRENGTH}"
 
-# Check if this is a fresh installation
+# Check if this is a fresh installation - be more specific about what constitutes "fresh"
 FRESH_INSTALL=false
-if [[ ! -f "/data/gotify.db" ]] && [[ ! -f "$CONFIG_PATH" ]]; then
+DB_EXISTS=false
+CONFIG_EXISTS=false
+
+if [[ -f "/data/gotify.db" ]]; then
+    DB_EXISTS=true
+    echo "[INFO] Database file exists: /data/gotify.db"
+fi
+
+if [[ -f "$CONFIG_PATH" ]]; then
+    CONFIG_EXISTS=true
+    echo "[INFO] Configuration file exists: $CONFIG_PATH"
+fi
+
+# Only consider it fresh if BOTH database AND config are missing
+if [[ "$DB_EXISTS" == "false" ]] && [[ "$CONFIG_EXISTS" == "false" ]]; then
     FRESH_INSTALL=true
-    echo "[INFO] Fresh installation detected"
+    echo "[INFO] Fresh installation detected - no database or config found"
+else
+    echo "[INFO] Existing installation detected"
 fi
 
 echo "[INFO] Checking Gotify configuration..."
 
-# Only create full configuration on fresh install, otherwise update selectively
+# Create necessary directories FIRST
+echo "[INFO] Setting up data directories..."
+mkdir -p /data/images /data/plugins
+
+# Handle configuration based on installation state
 if [[ "$FRESH_INSTALL" == "true" ]]; then
     echo "[INFO] Creating initial Gotify configuration for fresh install..."
     cat > "$CONFIG_PATH" <<EOF
@@ -76,17 +96,60 @@ defaultuser:
 registration: ${ALLOW_REGISTRATION}
 EOF
     echo "[INFO] Initial configuration created successfully"
-else
-    echo "[INFO] Configuration file exists, preserving existing settings"
-    echo "[INFO] Updating only basic server settings..."
     
-    # Update only the port if it's different, preserving other settings
+elif [[ "$CONFIG_EXISTS" == "false" ]] && [[ "$DB_EXISTS" == "true" ]]; then
+    # Database exists but config is missing - create minimal config without defaultuser
+    echo "[INFO] Database exists but config missing - creating config without default user"
+    cat > "$CONFIG_PATH" <<EOF
+server:
+  listenaddr: "0.0.0.0"
+  port: ${PORT}
+  ssl:
+    enabled: false
+    redirecttohttps: false
+  responseheaders:
+    X-Custom-Header: ""
+  cors:
+    alloworigins:
+      - "*"
+    allowmethods:
+      - "GET"
+      - "POST"
+      - "DELETE"
+    allowheaders:
+      - "*"
+
+database:
+  dialect: "sqlite3"
+  connection: "/data/gotify.db"
+
+passstrength: ${PASSSTRENGTH}
+
+uploadedimagesdir: "/data/images"
+
+pluginsdir: "/data/plugins"
+
+registration: ${ALLOW_REGISTRATION}
+EOF
+    echo "[INFO] Configuration recreated for existing database"
+    
+else
+    echo "[INFO] Configuration file exists, updating only necessary settings..."
+    
+    # Backup existing config
+    cp "$CONFIG_PATH" "$CONFIG_PATH.backup"
+    
+    # Update only the port and basic settings, preserving user data
     if command -v yq >/dev/null 2>&1; then
         # Use yq if available for precise YAML editing
         yq eval ".server.port = ${PORT}" -i "$CONFIG_PATH"
         yq eval ".server.listenaddr = \"0.0.0.0\"" -i "$CONFIG_PATH"
         yq eval ".registration = ${ALLOW_REGISTRATION}" -i "$CONFIG_PATH"
         yq eval ".passstrength = ${PASSSTRENGTH}" -i "$CONFIG_PATH"
+        # Ensure database path is correct
+        yq eval ".database.connection = \"/data/gotify.db\"" -i "$CONFIG_PATH"
+        yq eval ".uploadedimagesdir = \"/data/images\"" -i "$CONFIG_PATH"
+        yq eval ".pluginsdir = \"/data/plugins\"" -i "$CONFIG_PATH"
         echo "[INFO] Configuration updated using yq"
     else
         # Fallback: basic sed replacements (less reliable but works)
@@ -98,18 +161,35 @@ else
     fi
 fi
 
-# Create necessary directories
-echo "[INFO] Setting up data directories..."
-mkdir -p /data/images /data/plugins
+# Set proper permissions - be more careful about this
+echo "[INFO] Setting file permissions..."
 
-# Set permissions based on available user
+# First, ensure we own the files we just created
+chown root:root "$CONFIG_PATH" 2>/dev/null || true
+
+# Handle permissions based on available user, but be less aggressive
 if id gotify >/dev/null 2>&1; then
     echo "[INFO] Setting permissions for gotify user..."
-    chown -R gotify:gotify /data 2>/dev/null || echo "[WARNING] Could not change ownership to gotify user"
-    chmod -R 755 /data
+    # Only change ownership of files that don't exist or are owned by root
+    find /data -type f \( -user root -o ! -user gotify \) -exec chown gotify:gotify {} \; 2>/dev/null || true
+    find /data -type d \( -user root -o ! -user gotify \) -exec chown gotify:gotify {} \; 2>/dev/null || true
+    
+    # Set minimal required permissions
+    chmod 644 "$CONFIG_PATH"
+    chmod 755 /data /data/images /data/plugins
+    
+    # Database file needs special handling
+    if [[ -f "/data/gotify.db" ]]; then
+        chown gotify:gotify "/data/gotify.db" 2>/dev/null || true
+        chmod 644 "/data/gotify.db"
+    fi
 else
     echo "[WARNING] Gotify user not found, using root permissions"
-    chmod -R 755 /data
+    chmod 644 "$CONFIG_PATH"
+    chmod 755 /data /data/images /data/plugins
+    if [[ -f "/data/gotify.db" ]]; then
+        chmod 644 "/data/gotify.db"
+    fi
 fi
 
 # Find the gotify binary
@@ -128,7 +208,18 @@ if [[ -z "$GOTIFY_BIN" ]]; then
     exit 1
 fi
 
+# Final check before starting
+echo "[INFO] Final pre-start checks:"
+echo "  - Database exists: $([ -f "/data/gotify.db" ] && echo "YES" || echo "NO")"
+echo "  - Config exists: $([ -f "$CONFIG_PATH" ] && echo "YES" || echo "NO")"
+echo "  - Images dir exists: $([ -d "/data/images" ] && echo "YES" || echo "NO")"
+echo "  - Plugins dir exists: $([ -d "/data/plugins" ] && echo "YES" || echo "NO")"
+
 echo "[INFO] Starting Gotify server..."
+
+# Set environment variables for better database handling
+export GOTIFY_DATABASE_DIALECT="sqlite3"
+export GOTIFY_DATABASE_CONNECTION="/data/gotify.db"
 
 # Determine the correct execution method based on available tools and user
 if id gotify >/dev/null 2>&1; then

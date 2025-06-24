@@ -21,11 +21,14 @@ RUN if command -v apk >/dev/null 2>&1; then \
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
-# Check if gotify user exists and create data directory
-RUN mkdir -p /data && \
-    if id gotify >/dev/null 2>&1; then \
+# Ensure the data directory structure exists and has proper permissions
+RUN mkdir -p /data /data/images /data/plugins && \
+    chmod 755 /data /data/images /data/plugins
+
+# Check if gotify user exists and create if necessary
+RUN if id gotify >/dev/null 2>&1; then \
         echo "User gotify already exists"; \
-        chown gotify:gotify /data; \
+        chown -R gotify:gotify /data; \
     else \
         echo "Creating gotify user"; \
         if command -v adduser >/dev/null 2>&1; then \
@@ -34,9 +37,14 @@ RUN mkdir -p /data && \
             useradd -r -u 1000 -s /bin/false gotify; \
         else \
             echo "No user creation command found, will run as root"; \
-        fi && \
-        chown gotify:gotify /data 2>/dev/null || chown root:root /data; \
+        fi; \
+        if id gotify >/dev/null 2>&1; then \
+            chown -R gotify:gotify /data; \
+        fi; \
     fi
+
+# Ensure data directory is a volume mount point
+VOLUME ["/data"]
 
 # Expose port
 EXPOSE 80
