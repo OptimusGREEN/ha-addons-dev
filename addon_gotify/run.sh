@@ -37,4 +37,15 @@ EOF
 mkdir -p /data/data
 
 echo "[INFO] Starting Gotify..."
-exec gotify --config "$CONFIG_PATH"
+
+# Try to find the gotify binary
+if [ -f "/app/gotify" ]; then
+    exec /app/gotify --config "$CONFIG_PATH"
+elif [ -f "/usr/bin/gotify" ]; then
+    exec /usr/bin/gotify --config "$CONFIG_PATH"
+elif command -v gotify >/dev/null 2>&1; then
+    exec gotify --config "$CONFIG_PATH"
+else
+    echo "[ERROR] Could not find gotify binary"
+    exit 1
+fi
