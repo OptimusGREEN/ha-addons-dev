@@ -2,7 +2,7 @@
 
 ![Supports aarch64 Architecture][aarch64-shield] ![Supports amd64 Architecture][amd64-shield] ![Supports armv7 Architecture][armv7-shield]
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/OptimusGREEN/ha-addons-dev/tree/main/addon_gotify)
+[![Version](https://img.shields.io/badge/version-0.1.1-blue.svg)](https://github.com/OptimusGREEN/ha-addons-dev/tree/main/addon_gotify)
 [![Gotify Version](https://img.shields.io/badge/gotify-2.6.3-green.svg)](https://github.com/gotify/server)
 
 A self-hosted push notification server for Home Assistant, powered by Gotify.
@@ -65,8 +65,22 @@ passstrength: 10
 ### Important Notes
 
 - **Change default credentials**: Always change the default username and password before first use
+- **Password persistence**: After the initial setup, changing the admin password through the Gotify web interface will be preserved across add-on restarts
+- **Configuration persistence**: User accounts, applications, and settings made through the web interface are stored in the database and will persist
 - **Port mapping**: The add-on maps the internal port to 8080 on your Home Assistant host
 - **Data persistence**: All configuration, messages, and uploaded images are stored in `/data/`
+
+## Initial Setup
+
+### First Time Setup
+
+1. Start the add-on with default credentials (`admin`/`admin`)
+2. Access the web interface at `http://[HOME_ASSISTANT_IP]:8080`
+3. **Immediately change the default password** through the web interface:
+   - Click on the user icon in the top-right corner
+   - Select "Change Password"
+   - Enter a strong password
+4. The new password will be preserved across add-on restarts
 
 ## Usage
 
@@ -211,6 +225,13 @@ This add-on is open source! Contributions are welcome:
 This add-on is licensed under the MIT License. Gotify server is licensed under the MIT License.
 
 ## Changelog
+
+### Version 0.1.1
+- **Fixed credential reset issue**: Admin passwords and user settings now persist across add-on restarts
+- Fixed user creation errors on different architectures
+- Improved configuration management with smart detection of fresh vs. existing installations
+- Enhanced error handling and logging
+- Better multi-architecture support with graceful fallbacks
 
 ### Version 0.1.0
 - Updated to Gotify 2.6.3 (latest version)

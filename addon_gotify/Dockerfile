@@ -3,11 +3,16 @@ FROM gotify/server:2.6.3
 # Switch to root to make modifications
 USER root
 
-# Install jq and bash
+# Install jq, bash, and yq for configuration management
 RUN if command -v apk >/dev/null 2>&1; then \
-        apk add --no-cache bash jq su-exec; \
+        apk add --no-cache bash jq su-exec && \
+        wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_$(apk --print-arch) && \
+        chmod +x /usr/local/bin/yq; \
     elif command -v apt-get >/dev/null 2>&1; then \
-        apt-get update && apt-get install -y bash jq gosu && rm -rf /var/lib/apt/lists/*; \
+        apt-get update && apt-get install -y bash jq gosu wget && \
+        wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_$(dpkg --print-architecture) && \
+        chmod +x /usr/local/bin/yq && \
+        rm -rf /var/lib/apt/lists/*; \
     else \
         echo "Package manager not found"; exit 1; \
     fi

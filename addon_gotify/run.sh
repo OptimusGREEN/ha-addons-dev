@@ -28,10 +28,19 @@ echo "  - Username: ${USERNAME}"
 echo "  - Registration allowed: ${ALLOW_REGISTRATION}"
 echo "  - Password strength: ${PASSSTRENGTH}"
 
-echo "[INFO] Generating Gotify configuration..."
+# Check if this is a fresh installation
+FRESH_INSTALL=false
+if [[ ! -f "/data/gotify.db" ]] && [[ ! -f "$CONFIG_PATH" ]]; then
+    FRESH_INSTALL=true
+    echo "[INFO] Fresh installation detected"
+fi
 
-# Create Gotify configuration file
-cat > "$CONFIG_PATH" <<EOF
+echo "[INFO] Checking Gotify configuration..."
+
+# Only create full configuration on fresh install, otherwise update selectively
+if [[ "$FRESH_INSTALL" == "true" ]]; then
+    echo "[INFO] Creating initial Gotify configuration for fresh install..."
+    cat > "$CONFIG_PATH" <<EOF
 server:
   listenaddr: "0.0.0.0"
   port: ${PORT}
@@ -66,6 +75,28 @@ defaultuser:
 
 registration: ${ALLOW_REGISTRATION}
 EOF
+    echo "[INFO] Initial configuration created successfully"
+else
+    echo "[INFO] Configuration file exists, preserving existing settings"
+    echo "[INFO] Updating only basic server settings..."
+    
+    # Update only the port if it's different, preserving other settings
+    if command -v yq >/dev/null 2>&1; then
+        # Use yq if available for precise YAML editing
+        yq eval ".server.port = ${PORT}" -i "$CONFIG_PATH"
+        yq eval ".server.listenaddr = \"0.0.0.0\"" -i "$CONFIG_PATH"
+        yq eval ".registration = ${ALLOW_REGISTRATION}" -i "$CONFIG_PATH"
+        yq eval ".passstrength = ${PASSSTRENGTH}" -i "$CONFIG_PATH"
+        echo "[INFO] Configuration updated using yq"
+    else
+        # Fallback: basic sed replacements (less reliable but works)
+        sed -i "s/port: [0-9]*/port: ${PORT}/" "$CONFIG_PATH"
+        sed -i "s/listenaddr: \".*\"/listenaddr: \"0.0.0.0\"/" "$CONFIG_PATH"
+        sed -i "s/registration: .*/registration: ${ALLOW_REGISTRATION}/" "$CONFIG_PATH"
+        sed -i "s/passstrength: [0-9]*/passstrength: ${PASSSTRENGTH}/" "$CONFIG_PATH"
+        echo "[INFO] Configuration updated using sed"
+    fi
+fi
 
 # Create necessary directories
 echo "[INFO] Setting up data directories..."
