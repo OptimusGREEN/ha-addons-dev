@@ -1,27 +1,35 @@
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache git make gcc musl-dev
+
+# Clone Gotify source
+RUN git clone --depth=1 --branch v2.4.0 https://github.com/gotify/server.git .
+
+# Build static binary
+RUN CGO_ENABLED=1 GOOS=linux go build -a -ldflags '-linkmode external -extldflags "-static"' -o gotify
+
+# Final stage
 FROM alpine:3.19
 
-# Install required packages
-RUN apk add --no-cache bash jq ca-certificates curl su-exec file
+# Install runtime dependencies
+RUN apk add --no-cache bash jq ca-certificates su-exec
 
 # Create gotify user
 RUN adduser -D -H -u 1000 gotify
 
-# Download Gotify binary for amd64 (Intel NUC)
-RUN echo "Downloading gotify-linux-amd64 for Intel NUC" && \
-    curl -L "https://github.com/gotify/server/releases/download/v2.4.0/gotify-linux-amd64" -o /usr/local/bin/gotify && \
-    chmod +x /usr/local/bin/gotify && \
-    file /usr/local/bin/gotify && \
-    /usr/local/bin/gotify --version || echo "Binary test completed"
+# Copy the statically built binary
+COPY --from=builder /app/gotify /usr/local/bin/gotify
+RUN chmod +x /usr/local/bin/gotify
 
-# Copy the run script
+# Copy run script
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
-
-# Keep as root user for now (we'll drop privileges in the script)
-# USER gotify
 
 # Expose port
 EXPOSE 80
 
-# Run our custom script
-CMD [ "/run.sh" ]
+# Run script
+CMD ["/run.sh"]
