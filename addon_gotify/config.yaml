@@ -1,5 +1,5 @@
 name: Gotify Server
-version: "0.0.5"
+version: "0.0.6"
 slug: addon_gotify
 description: Self-hosted notification server (Gotify) as a Home Assistant addon
 startup: services
@@ -9,9 +9,9 @@ webui: "http://[HOST]:[PORT:80]/"
 ingress: false
 panel_icon: mdi:bell-ring
 arch:
-  - aarch64
+  # - aarch64
   - amd64
-  - armv7
+  # - armv7
 
 ports:
   80/tcp: 8080
