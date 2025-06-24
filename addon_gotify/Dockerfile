@@ -1,35 +1,29 @@
-FROM golang:1.22-alpine AS builder
+FROM gotify/server:2.4.0
 
-WORKDIR /app
+# Switch to root to make modifications
+USER root
 
-# Install build dependencies
-RUN apk add --no-cache git make gcc musl-dev
+# Install jq and bash
+RUN if command -v apk >/dev/null 2>&1; then \
+        apk add --no-cache bash jq; \
+    elif command -v apt-get >/dev/null 2>&1; then \
+        apt-get update && apt-get install -y bash jq && rm -rf /var/lib/apt/lists/*; \
+    else \
+        echo "Package manager not found"; exit 1; \
+    fi
 
-# Clone Gotify source
-RUN git clone --depth=1 --branch v2.4.0 https://github.com/gotify/server.git .
-
-# Build static binary
-RUN CGO_ENABLED=1 GOOS=linux go build -a -ldflags '-linkmode external -extldflags "-static"' -o gotify
-
-# Final stage
-FROM alpine:3.19
-
-# Install runtime dependencies
-RUN apk add --no-cache bash jq ca-certificates su-exec
-
-# Create gotify user
-RUN adduser -D -H -u 1000 gotify
-
-# Copy the statically built binary
-COPY --from=builder /app/gotify /usr/local/bin/gotify
-RUN chmod +x /usr/local/bin/gotify
-
-# Copy run script
+# Copy our custom run script
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
+
+# Find where gotify is installed in the original image
+RUN find / -name "gotify" -type f 2>/dev/null || echo "Gotify binary search completed"
+
+# Create gotify user if it doesn't exist
+RUN id gotify || adduser -D -H -u 1000 gotify
 
 # Expose port
 EXPOSE 80
 
-# Run script
+# Use our custom run script
 CMD ["/run.sh"]

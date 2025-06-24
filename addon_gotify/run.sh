@@ -13,7 +13,7 @@ if [[ ! -f "$OPTIONS_FILE" ]]; then
     exit 1
 fi
 
-# Extract options using jq (Home Assistant provides this)
+# Extract options using jq
 PORT=$(jq -r '.port // 80' "$OPTIONS_FILE")
 USERNAME=$(jq -r '.username // "admin"' "$OPTIONS_FILE")
 PASSWORD=$(jq -r '.password // "admin"' "$OPTIONS_FILE")
@@ -46,7 +46,24 @@ mkdir -p /data
 chown -R gotify:gotify /data
 chmod -R 755 /data
 
+echo "[INFO] Finding Gotify binary..."
+
+# Find the gotify binary
+GOTIFY_BIN=""
+for path in /usr/local/bin/gotify /usr/bin/gotify /app/gotify /gotify; do
+    if [[ -x "$path" ]]; then
+        GOTIFY_BIN="$path"
+        echo "[INFO] Found Gotify binary at: $GOTIFY_BIN"
+        break
+    fi
+done
+
+if [[ -z "$GOTIFY_BIN" ]]; then
+    echo "[ERROR] Could not find Gotify binary"
+    exit 1
+fi
+
 echo "[INFO] Starting Gotify as gotify user..."
 
 # Switch to gotify user and start the application
-exec su-exec gotify /usr/local/bin/gotify --config "$CONFIG_PATH"
+exec su-exec gotify "$GOTIFY_BIN" --config "$CONFIG_PATH"
