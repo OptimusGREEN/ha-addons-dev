@@ -1,21 +1,23 @@
 name: Gotify Server
-version: "0.0.10"
+version: "0.1.0"
 slug: addon_gotify
-description: Self-hosted notification server (Gotify) as a Home Assistant addon
+description: Self-hosted push notification server with WebSocket support
 startup: services
 boot: auto
 url: https://github.com/OptimusGREEN/ha-addons-dev/tree/main/addon_gotify
 webui: "http://[HOST]:[PORT:80]/"
 ingress: false
-panel_icon: mdi:bell-ring
+panel_icon: mdi:bell-ring-outline
 arch:
   - amd64
+  - aarch64
+  - armv7
 
 ports:
   80/tcp: 8080
 
 ports_description:
-  80/tcp: Gotify Web UI
+  80/tcp: Gotify Web UI and API
 
 map:
   - config:rw
@@ -27,9 +29,11 @@ options:
   username: admin
   password: admin
   allow_registration: false
+  passstrength: 10
 
 schema:
   port: int(1,65535)
   username: str
   password: str
   allow_registration: bool
+  passstrength: int(1,10)
