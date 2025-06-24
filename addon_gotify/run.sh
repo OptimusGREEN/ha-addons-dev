@@ -33,5 +33,8 @@ defaultuser:
 registration: ${ALLOW_REGISTRATION}
 EOF
 
+# Create data directory if it doesn't exist
+mkdir -p /data/data
+
 echo "[INFO] Starting Gotify..."
 exec gotify --config "$CONFIG_PATH"

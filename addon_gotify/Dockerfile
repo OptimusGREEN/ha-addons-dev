@@ -14,8 +14,8 @@ RUN go build -o gotify
 # --- Final stage image ---
 FROM alpine:3.19
 
-# Install bash for the run script
-RUN apk add --no-cache bash
+# Install bash and jq for the run script
+RUN apk add --no-cache bash jq
 
 # Create non-root user
 RUN adduser -D -H -u 1000 gotify
