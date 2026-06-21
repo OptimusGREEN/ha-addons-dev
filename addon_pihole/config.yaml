@@ -1,0 +1,26 @@
+name: "Pi-hole"
+version: "0.0.1"
+slug: "pihole"
+description: "Network-wide DNS ad blocking"
+url: "https://github.com/pi-hole/pi-hole"
+webui: "http://[HOST]:[PORT:80]/admin"
+arch:
+  - amd64
+  - aarch64
+  - armv7
+startup: services
+boot: auto
+init: false
+host_network: true
+options:
+  webpassword: ""
+  timezone: "UTC"
+  dns_listening_mode: "all"
+  web_port: 80
+  web_https_port: 443
+schema:
+  webpassword: str
+  timezone: str
+  dns_listening_mode: list(all|single|bind|none)
+  web_port: port
+  web_https_port: port
