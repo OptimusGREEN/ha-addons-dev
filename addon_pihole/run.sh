@@ -11,5 +11,4 @@ WEB_PORT=$(jq -r '.web_port // 80' "$OPTIONS_FILE")
 WEB_HTTPS_PORT=$(jq -r '.web_https_port // 443' "$OPTIONS_FILE")
 export FTLCONF_webserver_port="${WEB_PORT},${WEB_HTTPS_PORT}s"
 
-# Hand off to Pi-hole's real startup — do not replace this with anything else
-exec /init
+exec start.sh
